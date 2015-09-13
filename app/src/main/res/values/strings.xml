@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">PhotoShare</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="sign_in_with_facebook">Facebook Signin</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="sign_in_facebook">Sign In with Facebook</string>
+    <string name="login_title">Log In</string>
+    <string name="facebook_app_id">484681391701819</string>
+    <string name="title_activity_photos">PhotosActivity</string>
+    <string name="view_photos">View Photos</string>
+</resources>
