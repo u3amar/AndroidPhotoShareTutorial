@@ -10,6 +10,7 @@ import com.facebook.GraphResponse;
 import com.parse.LogInCallback;
 import com.parse.ParseException;
 import com.parse.ParseFacebookUtils;
+import com.parse.ParseInstallation;
 import com.parse.ParseUser;
 import com.parse.SaveCallback;
 
@@ -70,13 +71,28 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void done(ParseException e) {
                         if (e == null)
-                            onLoginSuccess();
+                            updatePushData();
                         else
                             e.printStackTrace();
                     }
                 });
             }
         }).executeAsync();
+    }
+
+    private void updatePushData() {
+        ParseInstallation.getCurrentInstallation()
+                .put("user", ParseUser.getCurrentUser());
+
+        ParseInstallation.getCurrentInstallation().saveInBackground(new SaveCallback() {
+            @Override
+            public void done(ParseException e) {
+                if (e == null)
+                    onLoginSuccess();
+                else
+                    e.printStackTrace();
+            }
+        });
     }
 
     private void onLoginSuccess() {

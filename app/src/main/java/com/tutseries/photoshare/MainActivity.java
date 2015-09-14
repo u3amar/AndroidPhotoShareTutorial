@@ -15,10 +15,13 @@ import com.facebook.HttpMethod;
 import com.parse.FindCallback;
 import com.parse.ParseException;
 import com.parse.ParseFile;
+import com.parse.ParseInstallation;
 import com.parse.ParseObject;
+import com.parse.ParsePush;
 import com.parse.ParseQuery;
 import com.parse.ParseUser;
 import com.parse.SaveCallback;
+import com.parse.SendCallback;
 import com.tutseries.photoshare.models.Photo;
 import com.tutseries.photoshare.models.PhotoTarget;
 import com.tutseries.photoshare.utils.FileUtils;
@@ -139,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void createPhotoTargets(Photo photo, List<ParseUser> targets) {
+    private void createPhotoTargets(Photo photo, final List<ParseUser> targets) {
         List<PhotoTarget> targetsToSave = new ArrayList<>();
         for (ParseUser userTarget : targets) {
             PhotoTarget target = new PhotoTarget();
@@ -152,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void done(ParseException e) {
                 if (e == null) {
-                    onTargetsSaved();
+                    onTargetsSaved(targets);
                 } else {
                     e.printStackTrace();
                 }
@@ -160,8 +163,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void onTargetsSaved() {
+    private void onTargetsSaved(List<ParseUser> users) {
+        List<ParseQuery<ParseInstallation>> pushQueries = new ArrayList<>();
+        for (ParseUser user : users) {
+            ParseQuery<ParseInstallation> pushNotifQuery = ParseInstallation.getQuery()
+                    .whereEqualTo("user", user);
+            pushQueries.add(pushNotifQuery);
+        }
 
+        pushQueries.add(ParseInstallation.getQuery()
+                .whereEqualTo("user", ParseUser.getCurrentUser()));
+        ParsePush.sendMessageInBackground("Hey there, you have a new message", ParseQuery.or(pushQueries),
+                new SendCallback() {
+                    @Override
+                    public void done(ParseException e) {
+                        if (e == null) {
+                            Toast.makeText(MainActivity.this, "Sent notifications to friends!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            e.printStackTrace();
+                        }
+                    }
+                });
     }
 
     @Override

@@ -4,6 +4,7 @@ import android.app.Application;
 
 import com.parse.Parse;
 import com.parse.ParseFacebookUtils;
+import com.parse.ParseInstallation;
 import com.parse.ParseObject;
 import com.tutseries.photoshare.models.Photo;
 import com.tutseries.photoshare.models.PhotoTarget;
@@ -22,5 +23,7 @@ public class PhotoShareApplication extends Application {
         ParseFacebookUtils.initialize(this);
         ParseObject.registerSubclass(Photo.class);
         ParseObject.registerSubclass(PhotoTarget.class);
+
+        ParseInstallation.getCurrentInstallation().saveInBackground();
     }
 }
