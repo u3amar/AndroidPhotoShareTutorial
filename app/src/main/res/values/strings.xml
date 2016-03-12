@@ -10,4 +10,6 @@
     <string name="facebook_app_id">484681391701819</string>
     <string name="title_activity_photos">PhotosActivity</string>
     <string name="view_photos">View Photos</string>
+    <string name="loading">Loading</string>
+    <string name="please_wait">Please wait...</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.tutseries.photoshare;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -8,11 +9,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.facebook.AccessToken;
-import com.facebook.GraphRequest;
-import com.facebook.GraphResponse;
-import com.facebook.HttpMethod;
-import com.parse.FindCallback;
 import com.parse.ParseException;
 import com.parse.ParseFile;
 import com.parse.ParseInstallation;
@@ -24,19 +20,21 @@ import com.parse.SaveCallback;
 import com.parse.SendCallback;
 import com.tutseries.photoshare.models.Photo;
 import com.tutseries.photoshare.models.PhotoTarget;
+import com.tutseries.photoshare.utils.FacebookUtils;
 import com.tutseries.photoshare.utils.FileUtils;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.tutseries.photoshare.utils.ParseFacebookUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import bolts.Continuation;
+import bolts.Task;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity {
     private int GALLERY_REQUEST_CODE = 2312;
+    private ProgressDialog mProgressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,65 +59,53 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
+    protected void onPause() {
+        super.onPause();
+
+        if (mProgressDialog != null) {
+            mProgressDialog.cancel();
+            mProgressDialog = null;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == GALLERY_REQUEST_CODE) {
             if (resultCode == RESULT_OK && data != null) {
-                fetchFriends(new FriendsReadyListener() {
-                    @Override
-                    public void onFriendsReady(List<ParseUser> friends) {
-                        if (friends != null)
-                            savePhoto(data.getData(), friends);
-                    }
-                });
+                onPhotoReady(data.getData());
             }
         }
     }
 
-    private void fetchFriends(final FriendsReadyListener listener) {
-        new GraphRequest(
-                AccessToken.getCurrentAccessToken(),
-                "/me/friends",
-                null,
-                HttpMethod.GET,
-                new GraphRequest.Callback() {
-                    public void onCompleted(GraphResponse response) {
-                        JSONObject responseJson = response.getJSONObject();
-                        String[] ids = extractIdsForJSON(responseJson);
-                        fetchFriendForId(ids, listener);
-                    }
-                }
-        ).executeAsync();
-    }
-
-    private String[] extractIdsForJSON(JSONObject responseJson) {
-        JSONArray data = responseJson.optJSONArray("data");
-        if (data != null) {
-            String[] ids = new String[data.length()];
-            for (int i = 0; i < data.length(); i++) {
-                ids[i] = data.optJSONObject(i).optString("id");
-            }
-
-            return ids;
-        }
-
-        return null;
-    }
-
-    private void fetchFriendForId(String[] ids, final FriendsReadyListener listener) {
-        List<ParseQuery<ParseUser>> friendsQueries = new ArrayList<>();
-        for (String id : ids) {
-            friendsQueries.add(ParseUser.getQuery()
-                    .whereEqualTo("facebookId", id));
-        }
-
-        ParseQuery.or(friendsQueries)
-                .findInBackground(new FindCallback<ParseUser>() {
+    private void onPhotoReady(final Uri pathToImage) {
+        mProgressDialog = ProgressDialog.show(this, getString(R.string.loading), getString(R.string.please_wait));
+        FacebookUtils.fetchFriends()
+                .onSuccessTask(new Continuation<String[], Task<List<ParseUser>>>() {
                     @Override
-                    public void done(List<ParseUser> list, ParseException e) {
-                        listener.onFriendsReady(list);
+                    public Task<List<ParseUser>> then(Task<String[]> task) throws Exception {
+                        return ParseFacebookUtils.fetchFriendForId(task.getResult());
                     }
-                });
+                })
+                .onSuccessTask(new Continuation<List<ParseUser>, Task<Void>>() {
+                    @Override
+                    public Task<Void> then(Task<List<ParseUser>> task) throws Exception {
+                        savePhoto(pathToImage, task.getResult());
+                        return null;
+                    }
+                })
+                .continueWith(new Continuation<Void, Void>() {
+                    @Override
+                    public Void then(Task<Void> task) throws Exception {
+                        if (task.getError() != null)
+                            task.getError().printStackTrace();
+
+                        if (mProgressDialog != null)
+                            mProgressDialog.cancel();
+
+                        return null;
+                    }
+                }, Task.UI_THREAD_EXECUTOR);
     }
 
     private void savePhoto(Uri pathToImage, final List<ParseUser> targets) {
@@ -200,9 +186,5 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private interface FriendsReadyListener {
-        void onFriendsReady(List<ParseUser> friends);
     }
 }
